@@ -1,0 +1,18 @@
+ marginRequirement = MarketInfo( Symbol(), MODE_MARGINREQUIRED ) * 0.01;
+   maxLot = ( double ) MarketInfo( Symbol(), MODE_MAXLOT );  
+   minLot = ( double ) MarketInfo( Symbol(), MODE_MINLOT );  
+   currentSpread = NormalizeDouble( Ask - Bid, Digits ); 
+   stoplevel = ( int ) MathMax( MarketInfo( Symbol(), MODE_FREEZELEVEL ), MarketInfo( Symbol(), MODE_STOPLEVEL ) );
+   if( stoplevel > TradeDelta ) TradeDelta = stoplevel;
+   if( stoplevel > Trailing ) Trailing = stoplevel;
+   avgSpread = currentSpread; 
+   size = TickSample;
+   ArrayResize( spreadSize, size ); 
+   ArrayFill( spreadSize, 0, size, avgSpread );
+   maxSpread = NormalizeDouble( MaxSpread * Point, Digits );
+   deleteRatio = NormalizeDouble( ( double ) DeleteRatio / 50, 2 );
+   rateTrigger = NormalizeDouble( ( double ) VelocityTrigger * Point, Digits );
+   testerStartDate = StringConcatenate( Year(), "-", Month(), "-", Day() );
+   initialBalance = AccountBalance();  
+   display();
+   return ( 0 );
