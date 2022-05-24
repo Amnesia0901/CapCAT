@@ -1,0 +1,115 @@
+if( !IsTesting() ){ 
+      double rate = 0;
+      for( int pos = OrdersHistoryTotal() - 1; pos >= 0; pos-- ) {
+         if( OrderSelect( pos, SELECT_BY_POS, MODE_HISTORY ) ) {
+            if( OrderProfit() != 0.0 ) {
+               if( OrderClosePrice() != OrderOpenPrice() ) {
+                  if( OrderSymbol() == Symbol() ) {
+                     calculateCommission = false;
+                     rate = MathAbs( OrderProfit() / MathAbs( OrderClosePrice() - OrderOpenPrice() ) );
+                     commissionPoints = ( -OrderCommission() ) / rate;
+                     break;
+                  }
+               }
+            }
+         }
+      } 
+   }
+}
+int offlineGMT(){
+   int bkrH = Hour();
+   int gOffset =  bkrH - GMTOffset; 
+   if( gOffset < 0 ) gOffset += 24;
+   else if( gOffset > 23 ) gOffset -= 24;
+   return ( gOffset );
+}
+
+int start() {   
+   int totalBuyStop = 0;
+   int totalSellStop = 0;  
+   int ticket;  
+   int totalTrades = 0;
+   int totalUnprotected = 0;
+   double accountEquity;
+   if( calculateCommission ) commission();
+   gmt = offlineGMT();
+   prepareSpread();
+   manageTicks();  
+   for( int pos = 0; pos < OrdersTotal(); pos++ ) {
+      r = OrderSelect( pos, SELECT_BY_POS, MODE_TRADES );
+      if( OrderSymbol() != Symbol() ) continue;   
+      if( OrderMagicNumber() == MagicNumber ){ 
+         totalTrades++;
+         switch ( OrderType() ) {
+            case OP_BUYSTOP:
+               if( (int) TimeCurrent() - lastBuyOrder > VelocityTime )
+                  r = OrderDelete( OrderTicket() );
+               totalBuyStop++;
+               totalUnprotected++;
+            break;
+            case OP_SELLSTOP:
+               if( (int) TimeCurrent() - lastSellOrder > VelocityTime )
+                  r = OrderDelete( OrderTicket() );
+               totalSellStop++;
+               totalUnprotected++;
+            break;
+            case OP_BUY:    
+               accountEquity = AccountBalance() + OrderProfit() + OrderCommission() + OrderSwap(); 
+               if( OrderStopLoss() == 0 || ( OrderStopLoss() > 0 && OrderStopLoss() < OrderOpenPrice() ) ) totalUnprotected++;
+               if( Bid - OrderOpenPrice() > ( Trailing * Point ) + ( StartTrailing * Point ) + commissionPoints ){  
+                  if( OrderStopLoss() == 0.0 || Bid - OrderStopLoss() > Trailing * Point )
+                     if( NormalizeDouble( Bid - ( Trailing * Point ), Digits ) != OrderStopLoss() )
+                        r = OrderModify( OrderTicket(), OrderOpenPrice(), NormalizeDouble( Bid - ( Trailing * Point ), Digits ), OrderTakeProfit(), 0 );                  
+               } else {
+                  if( accountEquity > max || accountEquity / AccountBalance() < ( double ) MaxDrawdown / 10 ){
+                     if( Bid < OrderOpenPrice() - ( VelocityTrigger * Point ) )
+                        if( OrderStopLoss() == 0.0 || Bid - OrderStopLoss() > ( Trailing * Point ) )
+                           if( NormalizeDouble( Bid - ( Trailing * Point ), Digits ) != OrderStopLoss() )
+                              r = OrderModify( OrderTicket(), OrderOpenPrice(), NormalizeDouble( Bid - ( Trailing * Point ), Digits ), OrderTakeProfit(), 0 ); 
+                  }
+               } 
+            break;
+            case OP_SELL:    
+               accountEquity = AccountBalance() + OrderProfit() + OrderCommission() + OrderSwap();
+               if( OrderStopLoss() == 0 || ( OrderStopLoss() > 0 && OrderStopLoss() > OrderOpenPrice() ) ) totalUnprotected++;
+               if( OrderOpenPrice() - Ask > ( Trailing * Point ) + ( StartTrailing * Point ) + commissionPoints ){  
+                  if( OrderStopLoss() == 0.0 || OrderStopLoss() - Ask > Trailing * Point ) 
+                     if( NormalizeDouble( Ask + ( Trailing * Point ), Digits ) != OrderStopLoss() )
+                        r = OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble( Ask + ( Trailing * Point ), Digits ), OrderTakeProfit(), 0 );                    
+               } else {
+                  if( accountEquity > max || accountEquity / AccountBalance() < ( double ) MaxDrawdown / 10 ){
+                     if( Ask > OrderOpenPrice() + ( VelocityTrigger * Point ) )
+                        if( OrderStopLoss() == 0.0 || OrderStopLoss() - Ask > ( Trailing * Point ) ) 
+                           if( NormalizeDouble( Ask + ( Trailing * Point ), Digits ) != OrderStopLoss() )
+                              r = OrderModify(OrderTicket(), OrderOpenPrice(), NormalizeDouble( Ask + ( Trailing * Point ), Digits ), OrderTakeProfit(), 0 );
+                  }
+               } 
+            break;
+         }  
+      }
+   }  
+   
+   if( totalTrades == 0 ){
+      if( AccountBalance() > max ) max = AccountBalance();
+   }
+    
+   if( TradeManager == 0 ) { 
+      if( ( ( StartHour < EndHour && gmt >= StartHour && gmt <= EndHour ) 
+      || ( StartHour > EndHour && ( ( gmt <= EndHour && gmt >= 0 ) 
+      || ( gmt <= 23 && gmt >= StartHour ) ) ) ) 
+      ){ 
+         if( totalUnprotected < TradeDeviation ){
+            if( rateChange > VelocityTrigger * Point && avgSpread <= maxSpread && totalBuyStop < TradeDeviation ) { 
+               ticket = OrderSend( Symbol(), OP_BUYSTOP, lotSize(), Ask + ( totalBuyStop + 1.0 ) * ( Point * TradeDelta ), Slippage, 0, 0, TradeComment, MagicNumber, 0 );
+               lastBuyOrder = ( int ) TimeCurrent();
+            } 
+            if( rateChange < -VelocityTrigger * Point && avgSpread <= maxSpread && totalSellStop < TradeDeviation ) { 
+               ticket = OrderSend(Symbol(), OP_SELLSTOP, lotSize(), Bid - ( totalSellStop + 1.0 ) * ( Point * TradeDelta ), Slippage, 0, 0, TradeComment, MagicNumber, 0 );
+               lastSellOrder = ( int ) TimeCurrent();
+            }    
+         }
+      }
+   }  
+    
+   display(); 
+   return ( 0 );
