@@ -1,2 +1,2 @@
 # CapCAT
-CapCAT Automated EA
+CapCAT Automated EA Open Sourec
