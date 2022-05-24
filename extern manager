@@ -1,0 +1,40 @@
+extern manager TradeManager = 0;
+extern string TradeComment = "CapCAT"; 
+extern int MagicNumber = 19871231; 
+extern int Slippage = 3;
+extern int MaxSpread = 20;
+extern double FixedLot = 0;
+extern int RiskPercent = 99; 
+extern int MaxDrawdown = 99;
+extern int StartHour = 2; 
+extern int EndHour = 22;
+extern int GMTOffset = 0;
+ int TradeDeviation = 2;
+extern int StopLoss = 10;   
+extern int TradeDelta = 12;
+extern int Trailing = 3;  
+extern int StartTrailing = 7;  
+extern int VelocityTrigger = 77; 
+int VelocityTime = 7;  
+int DeleteRatio = 30;  
+
+int OrderExpiry = 15; 
+int TickSample = 100;  
+int r, gmt, brokerOffset, size, digits, stoplevel;
+
+double marginRequirement, maxLot, minLot, lotSize, points, currentSpread, avgSpread, maxSpread, initialBalance, rateChange, rateTrigger, deleteRatio, commissionPoints;
+
+double spreadSize[]; 
+double tick[];
+double avgtick[];
+int tickTime[];   
+
+string testerStartDate, testerEndDate; 
+
+int lastBuyOrder, lastSellOrder;
+
+bool calculateCommission = true;
+
+double max = 0;
+
+int init() {   
